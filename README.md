@@ -12,11 +12,7 @@ anything with a ``.c`` extension). This program then writes that the event
 occurred, to what file, and when, forever.
 
 ```haskell
-import Streamly.FSNotify
 
-import qualified Streamly.Prelude as SP
-
-```haskell
 {-# LANGUAGE LambdaCase #-}
 
 import Streamly.FSNotify (EventPredicate,

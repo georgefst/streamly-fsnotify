@@ -5,7 +5,9 @@ name:                streamly-fsnotify
 --                   | | | +--- code changes with no API change
 version:             1.0.0.0
 synopsis:            Folder watching as a Streamly stream.
--- description:
+description:         Provides Streamly streams for both single-level and
+                     recursive folder watching. Also contains a principled and
+                     compositional system for filtering file system events.
 homepage:            https://notabug.org/koz.ross/streamly-fsnotify
 license:             GPL-3.0-or-later
 license-file:        LICENSE.md
