@@ -30,9 +30,13 @@
 --
 module Streamly.FSNotify 
 (
-  FSEntryType(..), Event(..), StopWatching, EventPredicate(..),
+  -- * Basic types
+  FSEntryType(..), Event(..), StopWatching,
   eventPath, eventTime, eventFSEntry,
+  -- * Events and predicates
+  EventPredicate(..), 
   isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert,
+  -- * Watchers
   watchDirectory, watchDirectoryWith, watchTree, watchTreeWith
 ) where
 
