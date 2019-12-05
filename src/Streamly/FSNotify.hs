@@ -1,18 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
 
 module Streamly.FSNotify where
 
 import Data.Semiring (Semiring(..))
-import Control.Concurrent.Chan (Chan, newChan, readChan)
+import Control.Concurrent.Chan (newChan, readChan)
 import Streamly (IsStream, MonadAsync)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Bool (bool)
 import Data.Time.Clock (UTCTime)
 import Data.Text (Text, pack)
-import System.Path (Path, FsRoot, FsPath(..), FileExt,
-                    isExtensionOf, fromFilePath, toFilePath, makeAbsolute)
+import System.Path (Path, FsPath(..), FileExt, Absolute,
+                    isExtensionOf, toFilePath, makeAbsolute, fromAbsoluteFilePath)
 
 import qualified Streamly.Prelude as SP
 import qualified System.FSNotify as FSN
@@ -20,11 +19,11 @@ import qualified System.FSNotify as FSN
 data FSEntryType = Dir | NotDir
   deriving (Eq, Show, Read, Bounded, Enum)
 
-data Event where
-  Added :: (FsRoot root) => Path root -> UTCTime -> FSEntryType -> Event
-  Modified :: (FsRoot root) => Path root -> UTCTime -> FSEntryType -> Event
-  Removed :: (FsRoot root) => Path root -> UTCTime -> FSEntryType -> Event
-  Other :: (FsRoot root) => Path root -> UTCTime -> Text -> Event
+data Event = Added (Path Absolute) UTCTime FSEntryType
+           | Modified (Path Absolute) UTCTime FSEntryType
+           | Removed (Path Absolute) UTCTime FSEntryType
+           | Other (Path Absolute) UTCTime Text
+  deriving (Eq, Show)
 
 type StopWatching = IO ()
 
@@ -118,19 +117,28 @@ invert (EventPredicate f) = EventPredicate (not . f)
 
 {-# INLINE watchDirectory #-}
 watchDirectory :: (IsStream t, MonadAsync m) => FsPath -> EventPredicate -> m (StopWatching, t m Event)
-watchDirectory = watch FSN.watchDirChan 
+watchDirectory = watch FSN.watchDirChan FSN.defaultConfig 
+
+{-# INLINE watchDirectoryWith #-}
+watchDirectoryWith :: (IsStream t, MonadAsync m) => FSN.WatchConfig -> FsPath -> EventPredicate -> m (StopWatching, t m Event)
+watchDirectoryWith = watch FSN.watchDirChan
 
 {-# INLINE watchTree #-}
 watchTree :: (IsStream t, MonadAsync m) => FsPath -> EventPredicate -> m (StopWatching, t m Event)
-watchTree = watch FSN.watchTreeChan
+watchTree = watch FSN.watchTreeChan FSN.defaultConfig
+
+{-# INLINE watchTreeWith #-}
+watchTreeWith :: (IsStream t, MonadAsync m) => FSN.WatchConfig -> FsPath -> EventPredicate -> m (StopWatching, t m Event)
+watchTreeWith = watch FSN.watchTreeChan
 
 -- Helpers
 {-# INLINE watch #-}
 watch :: (IsStream t, MonadAsync m) => 
-  (FSN.WatchManager -> FilePath -> (FSN.Event -> Bool) -> Chan FSN.Event -> IO (IO ())) -> 
+  (FSN.WatchManager -> FilePath -> FSN.ActionPredicate -> FSN.EventChannel -> IO FSN.StopListening) -> 
+  FSN.WatchConfig ->
   FsPath -> EventPredicate -> m (StopWatching, t m Event)
-watch f p predicate = do
-  manager <- liftIO FSN.startManager
+watch f conf p predicate = do
+  manager <- liftIO . FSN.startManagerConf $ conf
   fp <- toFilePath <$> (liftIO . makeAbsolute $ p)
   let pred' = runPredicate predicate . mungeEvent
   chan <- liftIO newChan
@@ -140,10 +148,12 @@ watch f p predicate = do
 
 {-# INLINE mungeEvent #-}
 mungeEvent :: FSN.Event -> Event
-mungeEvent e = case fromFilePath . FSN.eventPath $ e of
-  (FsPath p) -> case e of
-                  FSN.Added _ t b -> Added p t (isDir b)
-                  FSN.Modified _ t b -> Modified p t (isDir b)
-                  FSN.Removed _ t b -> Removed p t (isDir b)
-                  FSN.Unknown _ t s -> Other p t (pack s)
-  where isDir = bool NotDir Dir
+mungeEvent = \case
+  (FSN.Added p t b) -> Added (fromAbsoluteFilePath p) t (isDir b)
+  (FSN.Modified p t b) -> Modified (fromAbsoluteFilePath p) t (isDir b)
+  (FSN.Removed p t b) -> Modified (fromAbsoluteFilePath p) t (isDir b)
+  (FSN.Unknown p t s) -> Other (fromAbsoluteFilePath p) t (pack s)
+
+{-# INLINE isDir #-}
+isDir :: Bool -> FSEntryType
+isDir = bool NotDir Dir
