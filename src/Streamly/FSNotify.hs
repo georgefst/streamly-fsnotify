@@ -27,10 +27,53 @@
 -- Stability:     Experimental
 -- Portability:   GHC only
 --
+-- __Introduction__
 --
+-- This provides file watching as a Streamly stream. You can either watch
+-- recursively (namely, a directory's contents and all its subdirectories as
+-- well), or not. You can also filter out file system events you are not
+-- interested in. Lastly, we provide a compositional scheme for constructing
+-- filters for file system events.
+--
+-- __Example__
+--
+-- This example program watches @\/home\/koz\/c-project@ (and any of its
+-- subdirectories) for added or modified
+-- files with a @.c@ extension, and emits the change to the terminal, along with a
+-- timestamp of when it happened, forever:
+--
+-- > {-# LANGUAGE LambdaCase #-}
+-- >
+-- > import Streamly.FSNotify (EventPredicate, 
+-- >                           hasExtension, isDirectory, invert, isDeletion,
+-- >                           watchTree)
+-- > import System.Path (FsPath, FileExt, fromFilePath)
+-- > import Data.Semiring (times)
+-- > 
+-- > import qualified Streamly.Prelude as SP
+-- >
+-- > -- times -> both must be true
+-- > -- invert -> true when the argument would be false and vice versa
+-- > isCSourceFile :: EventPredicate
+-- > isCSourceFile = hasExtension (FileExt "c") `times` (invert isDirectory)
+-- >
+-- > notDeletion :: EventPredicate
+-- > notDeletion = invert isDeletion
+-- >
+-- > srcPath :: FsPath
+-- > srcPath = fromFilePath "/home/koz/c-project" 
+-- >
+-- > -- first value given by watchTree stops the watcher
+-- > -- we don't use it here, but if you want to, just call it
+-- > main :: IO ()
+-- > main = do (_, stream) <- watchTree srcPath (isCSourceFile `times` notDeletion)
+-- >           SP.drain . SP.mapM go $ stream
+-- >   where go = \case (Added p t _) -> putStrLn ("Created: " ++ show p ++ " at " ++  show t)
+-- >                    (Modified p t _) -> putStrLn ("Modified: " ++ show p ++ " at " ++ show t)
+-- >                    _ -> pure ()  
 module Streamly.FSNotify 
-(
-  -- * Basic types
+( 
+  -- * Basic types  
   FSEntryType(..), Event(..), StopWatching,
   eventPath, eventTime, eventFSEntry,
   -- * Events and predicates
