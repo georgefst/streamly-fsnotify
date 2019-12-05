@@ -4,7 +4,7 @@ name:                streamly-fsnotify
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
 version:             1.0.0.0
-synopsis:            File and folder watch streams with Streamly.
+synopsis:            Folder watching as a Streamly stream.
 -- description:
 homepage:            https://notabug.org/koz.ross/streamly-fsnotify
 license:             GPL-3.0-or-later
@@ -20,7 +20,6 @@ extra-source-files:  CHANGELOG.md,
 
 library
   exposed-modules:     Streamly.FSNotify
-  -- other-modules:
   build-depends:       base >= 4.9 && < 5,
                        streamly >= 0.7.0 && < 0.8.0,
                        fsnotify >= 0.3.0.1 && < 0.4.0.0,
