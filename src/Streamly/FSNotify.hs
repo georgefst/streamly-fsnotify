@@ -45,17 +45,16 @@
 -- > {-# LANGUAGE LambdaCase #-}
 -- >
 -- > import Streamly.FSNotify (EventPredicate, 
--- >                           hasExtension, isDirectory, invert, isDeletion,
+-- >                           hasExtension, isDirectory, invert, isDeletion, conj,
 -- >                           watchTree)
 -- > import System.Path (FsPath, FileExt, fromFilePath)
--- > import Data.Semiring (times)
 -- > 
 -- > import qualified Streamly.Prelude as SP
 -- >
--- > -- times -> both must be true
+-- > -- conj -> both must be true
 -- > -- invert -> true when the argument would be false and vice versa
 -- > isCSourceFile :: EventPredicate
--- > isCSourceFile = hasExtension (FileExt "c") `times` (invert isDirectory)
+-- > isCSourceFile = hasExtension (FileExt "c") `conj` (invert isDirectory)
 -- >
 -- > notDeletion :: EventPredicate
 -- > notDeletion = invert isDeletion
@@ -66,7 +65,7 @@
 -- > -- first value given by watchTree stops the watcher
 -- > -- we don't use it here, but if you want to, just call it
 -- > main :: IO ()
--- > main = do (_, stream) <- watchTree srcPath (isCSourceFile `times` notDeletion)
+-- > main = do (_, stream) <- watchTree srcPath (isCSourceFile `conj` notDeletion)
 -- >           SP.drain . SP.mapM go $ stream
 -- >   where go = \case (Added p t _) -> putStrLn ("Created: " ++ show p ++ " at " ++  show t)
 -- >                    (Modified p t _) -> putStrLn ("Modified: " ++ show p ++ " at " ++ show t)
@@ -78,7 +77,7 @@ module Streamly.FSNotify
   eventPath, eventTime, eventFSEntry,
   -- * Events and predicates
   EventPredicate(..), 
-  isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert,
+  isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert, conj, disj,
   -- * Watchers
   watchDirectory, watchDirectoryWith, watchTree, watchTreeWith
 ) where
@@ -166,6 +165,18 @@ instance Semiring EventPredicate where
   (EventPredicate f) `times` (EventPredicate g) = EventPredicate ((&&) <$> f <*> g)
   {-# INLINE one #-}
   one = everything
+
+-- | Predicate conjunction (meaning that /both/ have to be true for the result
+-- to be true). Synonym for 'Data.Semigroup.times'.
+{-# INLINE conj #-}
+conj :: EventPredicate -> EventPredicate -> EventPredicate
+conj = times
+
+-- | Predicate disjunction (meaning that /either/ has to be true for the result
+-- to be true). Synonym for 'Data.Semigroup.plus'.
+{-# INLINE disj #-}
+disj :: EventPredicate -> EventPredicate -> EventPredicate
+disj = plus
 
 -- | The trivial predicate (allows any event through).
 {-# INLINE everything #-}

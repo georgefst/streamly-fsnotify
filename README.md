@@ -16,17 +16,16 @@ occurred, to what file, and when, forever.
 {-# LANGUAGE LambdaCase #-}
 
 import Streamly.FSNotify (EventPredicate,
-                          hasExtension, is Directory, invert, isDeletion,
+                          hasExtension, is Directory, invert, isDeletion, conj,
                           watchTree)
 import System.Path (FsPath, FileExt, fromFilePath)
-import Data.Semiring (times)
 
 import qualified Streamly.Prelude as SP
 
--- times -> both must be true
+-- conj -> both must be true
 -- invert -> true when the argument would be false and vice versa
 isCSourceFile :: EventPredicate
-isCSourceFile = hasExtension (FileExt "c") `times` (invert isDirectory)
+isCSourceFile = hasExtension (FileExt "c") `conj` (invert isDirectory)
 
 notDeletion :: EventPredicate
 notDeletion = invert isDeletion
@@ -37,7 +36,7 @@ srcPath = fromFilePath "/home/koz/c-project"
 -- first value given by watchTree stops the watcher
 -- we don't use it here, but if you want to, just call it
 main :: IO ()
-main = do (_, stream) <- watchTree srcPath (isCSourceFile `times` notDeletion)
+main = do (_, stream) <- watchTree srcPath (isCSourceFile `conj` notDeletion)
           SP.drain . SP.mapM go $ stream
   where go = \case (Added p t _) -> putStrLn ("Created: " ++ show p ++ " at " ++ show t)
                    (Modified p t _) -> putStrLn ("Modified: " ++ show p ++ " at " ++ show t)
