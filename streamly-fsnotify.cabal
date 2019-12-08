@@ -3,7 +3,7 @@ name:                streamly-fsnotify
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.0.0.0
+version:             1.0.0.1
 synopsis:            Folder watching as a Streamly stream.
 description:         Provides Streamly streams for both single-level and
                      recursive folder watching. Also contains a principled and
@@ -28,6 +28,6 @@ library
                        paths >= 0.2.0.0 && < 0.3.0.0,
                        semirings >= 0.5.2 && < 0.6.0,
                        text >= 1.2.4.0 && < 1.3.0.0,
-                       time >= 1.9.3 && < 2.0.0
+                       time >= 1.1 && < 2.0.0
   hs-source-dirs:      src
   default-language:    Haskell2010
