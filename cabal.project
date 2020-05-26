@@ -1,9 +1,0 @@
-packages:             ./*.cabal
--- flags:       set whatever you need here
-optimization:         2
--- smaller binaries, but builds slower
-split-sections:       True
-
-package streamly-fsnotify
-  -- So haddock doesn't complain about plugins
-  haddock-options:    --optghc=-fdefer-type-errors 

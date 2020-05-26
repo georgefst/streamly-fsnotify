@@ -1,5 +1,9 @@
 # Revision history for streamly-fsnotify
 
+## 1.0.1.0 -- 2020-05-27
+
+* George Thomas takes over as maintainer. Metadata changes.
+
 ## 1.0.0.1 -- 2019-12-09
 
 * Widen bounds on ``time`` to support Windows build.
