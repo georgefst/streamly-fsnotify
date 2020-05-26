@@ -1,5 +1,3 @@
-# ``streamly-fsnotify``
-
 ## What's the deal with this library?
 
 [``streamly``][1] is an undoubtedly awesome library - [fast][2], flexible, and
