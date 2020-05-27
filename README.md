@@ -13,20 +13,20 @@ occurred, to what file, and when, forever.
 
 {-# LANGUAGE LambdaCase #-}
 
+import System.FilePath ((</>))
 import Streamly.FSNotify (EventPredicate, hasExtension, isDirectory, invert, isDeletion, conj, watchTree)
-import System.Path (FsPath, FileExt(FileExt), fromFilePath)
 import qualified Streamly.Prelude as SP
 
 -- conj -> both must be true
 -- invert -> true when the argument would be false and vice versa
 isCSourceFile :: EventPredicate
-isCSourceFile = hasExtension (FileExt "c") `conj` invert isDirectory
+isCSourceFile = hasExtension "c" `conj` invert isDirectory
 
 notDeletion :: EventPredicate
 notDeletion = invert isDeletion
 
-srcPath :: FsPath
-srcPath = fromFilePath "/home/koz/c-project"
+srcPath :: FilePath
+srcPath = "home" </> "koz" </> "c-project"
 
 -- first value given by watchTree stops the watcher
 -- we don't use it here, but if you want to, just call it
@@ -46,10 +46,9 @@ main = do
 * Cross-platform - should work anywhere both ``streamly`` and ``fsnotify`` do.
 * Efficient (event-driven, so won't shred your CPU or load your RAM).
 * Able to do one-level and recursive watching.
+* Compositional and principled treatment of event filtering predicates.
 * Extensive set of filtering predicates, so you don't have to see events you
   don't care about!
-* Compositional and principled treatment of file paths and event filtering
-  predicates.
 
 ## Sounds good? Can I use it?
 
