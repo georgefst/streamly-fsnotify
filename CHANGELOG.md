@@ -1,5 +1,9 @@
 # Revision history for streamly-fsnotify
 
+## 1.1.1.0 -- 2020-05-27
+
+* Export additional `EventPredicate`s.
+
 ## 1.1.0.0 -- 2020-05-27
 
 * Use abstract newtype for `StopWatching`.
