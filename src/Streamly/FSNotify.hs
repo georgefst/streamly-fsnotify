@@ -41,7 +41,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 -}
 module Streamly.FSNotify (
     -- * Basic types
-    FSEntryType(..), Event(..), StopWatching,
+    FSEntryType(..), Event(..), StopWatching(stopWatching),
     eventPath, eventTime, eventFSEntry,
     -- * Events and predicates
     EventPredicate(..),
@@ -76,8 +76,8 @@ data Event
     | Other FilePath UTCTime Text -- ^ Some other kind of event
     deriving (Eq, Show)
 
--- | A function, which, when executed, stops a file system watch.
-type StopWatching m = m ()
+-- | An object, which, when executed with 'stopWatching', stops a file system watch.
+newtype StopWatching m = StopWatching { stopWatching :: m () }
 
 -- | Helper to retrieve the file path associated with an event.
 eventPath :: Event -> FilePath
@@ -223,7 +223,7 @@ watch f conf p predicate = do
     let pred' = runPredicate predicate . mungeEvent
     chan <- liftIO newChan
     stop <- liftIO $ f manager p pred' chan
-    let reallyStop = liftIO stop >> liftIO (FSN.stopManager manager)
+    let reallyStop = StopWatching $ liftIO stop >> liftIO (FSN.stopManager manager)
     pure (reallyStop, SP.repeatM $ liftIO $ mungeEvent <$> readChan chan)
 
 mungeEvent :: FSN.Event -> Event
