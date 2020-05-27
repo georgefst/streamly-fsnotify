@@ -32,7 +32,7 @@ srcPath = fromFilePath "/home/koz/c-project"
 -- we don't use it here, but if you want to, just call it
 main :: IO ()
 main = do
-    (_, stream) <- watchTree srcPath (isCSourceFile `conj` notDeletion)
+    (_, stream) <- watchTree srcPath $ isCSourceFile `conj` notDeletion
     SP.drain . SP.mapM go $ stream
   where
     go = \case

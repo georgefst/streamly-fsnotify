@@ -31,7 +31,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 > -- we don't use it here, but if you want to, just call it
 > main :: IO ()
 > main = do
->     (_, stream) <- watchTree srcPath (isCSourceFile `conj` notDeletion)
+>     (_, stream) <- watchTree srcPath $ isCSourceFile `conj` notDeletion
 >     SP.drain . SP.mapM go $ stream
 >   where
 >     go = \case
@@ -140,11 +140,11 @@ disj = plus
 
 -- | The trivial predicate (allows any event through).
 everything :: EventPredicate
-everything = EventPredicate . const $ True
+everything = EventPredicate $ const True
 
 -- | The null predicate (allows no events through).
 nothing :: EventPredicate
-nothing = EventPredicate . const $ False
+nothing = EventPredicate $ const False
 
 -- | Allows through events that are caused by directories.
 -- Note that this will assume that non-\'basic\' events (that is, not creations, modifications or deletions) do not stem
