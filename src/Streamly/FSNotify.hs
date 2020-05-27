@@ -45,7 +45,7 @@ module Streamly.FSNotify (
     eventPath, eventTime, eventFSEntry,
     -- * Events and predicates
     EventPredicate(..),
-    isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert, conj, disj,
+    everything, nothing, isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert, conj, disj,
     -- * Watchers
     watchDirectory, watchDirectoryWith, watchTree, watchTreeWith,
 ) where
