@@ -41,7 +41,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 -}
 module Streamly.FSNotify (
     -- * Basic types
-    Event(..), StopWatching(stopWatching),
+    Event(..), StopListening,
     -- * Events and predicates
     EventPredicate(..),
     everything, nothing, isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert, conj, disj,
@@ -71,11 +71,6 @@ import System.FSNotify (
  )
 
 import qualified Streamly.Prelude as SP
-
-
--- | An object, which, when executed with 'stopWatching', stops a file system watch.
-newtype StopWatching m = StopWatching { stopWatching :: m () }
-
 
 {- Predicates -}
 
@@ -161,20 +156,20 @@ invert (EventPredicate f) = EventPredicate $ not . f
 {- Watchers -}
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+watchDirectory :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopListening, t m Event)
 watchDirectory = watch watchDirChan defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
 watchDirectoryWith :: (IsStream t, MonadAsync m) =>
-    WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+    WatchConfig -> FilePath -> EventPredicate -> m (StopListening, t m Event)
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+watchTree :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopListening, t m Event)
 watchTree = watch watchTreeChan defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: (IsStream t, MonadAsync m) => WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+watchTreeWith :: (IsStream t, MonadAsync m) => WatchConfig -> FilePath -> EventPredicate -> m (StopListening, t m Event)
 watchTreeWith = watch watchTreeChan
 
 
@@ -182,11 +177,11 @@ watchTreeWith = watch watchTreeChan
 
 watch :: (IsStream t, MonadAsync m) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
-    WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+    WatchConfig -> FilePath -> EventPredicate -> m (StopListening, t m Event)
 watch f conf p predicate = do
     manager <- liftIO $ startManagerConf conf
     let pred' = runPredicate predicate
     chan <- liftIO newChan
     stop <- liftIO $ f manager p pred' chan
-    let reallyStop = StopWatching $ liftIO stop >> liftIO (stopManager manager)
+    let reallyStop = stop >> stopManager manager
     pure (reallyStop, SP.repeatM $ liftIO $ readChan chan)
