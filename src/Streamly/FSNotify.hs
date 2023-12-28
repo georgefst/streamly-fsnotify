@@ -41,8 +41,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 -}
 module Streamly.FSNotify (
     -- * Basic types
-    FSEntryType(..), Event(..), StopWatching(stopWatching),
-    eventPath, eventTime, eventFSEntry,
+    Event(..), StopWatching(stopWatching),
     -- * Events and predicates
     EventPredicate(..),
     everything, nothing, isDirectory, hasExtension, isCreation, isModification, isDeletion, isBasic, invert, conj, disj,
@@ -54,54 +53,28 @@ import Control.Arrow ((>>>))
 import Control.Concurrent.Chan (newChan, readChan)
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Semiring (Semiring(..))
-import Data.Text (Text, pack)
-import Data.Time.Clock (UTCTime)
 import Streamly.Prelude (IsStream, MonadAsync)
 import System.FilePath (isExtensionOf)
+import System.FSNotify (
+    ActionPredicate,
+    Event (..),
+    EventChannel,
+    EventIsDirectory (IsDirectory),
+    StopListening,
+    WatchConfig,
+    WatchManager,
+    defaultConfig,
+    startManagerConf,
+    stopManager,
+    watchDirChan,
+    watchTreeChan,
+ )
 
 import qualified Streamly.Prelude as SP
-import qualified System.FSNotify as FSN
 
-
--- | Allows us to designate 'Event's as being fired by a directory or a non-directory entry.
-data FSEntryType = Dir | NotDir
-    deriving (Eq, Show, Read, Bounded, Enum)
-
--- | A file system notification.
-data Event
-    = Added FilePath UTCTime FSEntryType -- ^ Creation event
-    | Modified FilePath UTCTime FSEntryType -- ^ Modification event
-    | Removed FilePath UTCTime FSEntryType -- ^ Deletion event
-    | Other FilePath UTCTime Text -- ^ Some other kind of event
-    deriving (Eq, Show)
 
 -- | An object, which, when executed with 'stopWatching', stops a file system watch.
 newtype StopWatching m = StopWatching { stopWatching :: m () }
-
--- | Helper to retrieve the file path associated with an event.
-eventPath :: Event -> FilePath
-eventPath = \case
-    Added p _ _ -> p
-    Modified p _ _ -> p
-    Removed p _ _ -> p
-    Other p _ _ -> p
-
--- | Helper to retrieve an event's timestamp.
-eventTime :: Event -> UTCTime
-eventTime = \case
-    Added _ t _ -> t
-    Modified _ t _ -> t
-    Removed _ t _ -> t
-    Other _ t _ -> t
-
--- | Helper to retrieve whether the event stems from a directory or not.
--- Returns 'Nothing' if the event is not \'basic\' (that is, not a creation, modification or deletion).
-eventFSEntry :: Event -> Maybe FSEntryType
-eventFSEntry = \case
-    Added _ _ e -> Just e
-    Modified _ _ e -> Just e
-    Removed _ _ e -> Just e
-    Other{} -> Nothing
 
 
 {- Predicates -}
@@ -149,19 +122,14 @@ nothing = EventPredicate $ const False
 -- Note that this will assume that non-\'basic\' events (that is, not creations, modifications or deletions) do not stem
 -- from directories; use with care.
 isDirectory :: EventPredicate
-isDirectory = EventPredicate $ eventFSEntry >>> \case
-    Nothing -> False
-    Just Dir -> True
-    Just NotDir -> False
+isDirectory = EventPredicate $ eventIsDirectory >>> \case
+    IsDirectory -> True
+    _ -> False
 
 -- | Allows through events triggered by file system entries with a specific
 -- extension.
 hasExtension :: FilePath -> EventPredicate
-hasExtension fe = EventPredicate $ (fe `isExtensionOf`) . \case
-    Added p _ _ -> p
-    Modified p _ _ -> p
-    Removed p _ _ -> p
-    Other p _ _ -> p
+hasExtension fe = EventPredicate $ (fe `isExtensionOf`) . eventPath
 
 -- | Allows through only creation events.
 isCreation :: EventPredicate
@@ -183,9 +151,7 @@ isDeletion = EventPredicate $ \case
 
 -- | Allows through only \'basic\' events (namely creation, modification and deletion).
 isBasic :: EventPredicate
-isBasic = EventPredicate $ \case
-    Other{} -> False
-    _ -> True
+isBasic = EventPredicate $ \e -> runPredicate isCreation e || runPredicate isModification e || runPredicate isDeletion e
 
 -- | \'Flips\' the predicate - what it used to allow through is now blocked, and vice versa.
 invert :: EventPredicate -> EventPredicate
@@ -196,44 +162,31 @@ invert (EventPredicate f) = EventPredicate $ not . f
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
 watchDirectory :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopWatching m, t m Event)
-watchDirectory = watch FSN.watchDirChan FSN.defaultConfig
+watchDirectory = watch watchDirChan defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
 watchDirectoryWith :: (IsStream t, MonadAsync m) =>
-    FSN.WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
-watchDirectoryWith = watch FSN.watchDirChan
+    WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
 watchTree :: (IsStream t, MonadAsync m) => FilePath -> EventPredicate -> m (StopWatching m, t m Event)
-watchTree = watch FSN.watchTreeChan FSN.defaultConfig
+watchTree = watch watchTreeChan defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: (IsStream t, MonadAsync m) => FSN.WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
-watchTreeWith = watch FSN.watchTreeChan
+watchTreeWith :: (IsStream t, MonadAsync m) => WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+watchTreeWith = watch watchTreeChan
 
 
 {- Util -}
 
 watch :: (IsStream t, MonadAsync m) =>
-    (FSN.WatchManager -> FilePath -> FSN.ActionPredicate -> FSN.EventChannel -> IO FSN.StopListening) ->
-    FSN.WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
+    (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
+    WatchConfig -> FilePath -> EventPredicate -> m (StopWatching m, t m Event)
 watch f conf p predicate = do
-    manager <- liftIO $ FSN.startManagerConf conf
-    let pred' = runPredicate predicate . mungeEvent
+    manager <- liftIO $ startManagerConf conf
+    let pred' = runPredicate predicate
     chan <- liftIO newChan
     stop <- liftIO $ f manager p pred' chan
-    let reallyStop = StopWatching $ liftIO stop >> liftIO (FSN.stopManager manager)
-    pure (reallyStop, SP.repeatM $ liftIO $ mungeEvent <$> readChan chan)
-
-mungeEvent :: FSN.Event -> Event
-mungeEvent = \case
-    FSN.Added p t b -> Added p t (isDir b)
-    FSN.Modified p t b -> Modified p t (isDir b)
-    FSN.Removed p t b -> Modified p t (isDir b)
-    FSN.Unknown p t b s -> Other p t (pack s)
-    e -> Other (FSN.eventPath e) (FSN.eventTime e) (pack $ show e)
-
-isDir :: FSN.EventIsDirectory -> FSEntryType
-isDir = \case
-    FSN.IsFile -> NotDir
-    FSN.IsDirectory -> Dir
+    let reallyStop = StopWatching $ liftIO stop >> liftIO (stopManager manager)
+    pure (reallyStop, SP.repeatM $ liftIO $ readChan chan)
