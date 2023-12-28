@@ -47,8 +47,7 @@ module Streamly.FSNotify (
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
-import Control.Monad.IO.Class (MonadIO(..))
-import Streamly.Prelude (IsStream, MonadAsync)
+import Streamly.Prelude (IsStream)
 import System.FSNotify (
     ActionPredicate,
     Event (..),
@@ -66,27 +65,27 @@ import System.FSNotify (
 import qualified Streamly.Prelude as SP
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: (IsStream t, MonadAsync m) => FilePath -> ActionPredicate -> m (StopListening, t m Event)
+watchDirectory :: (IsStream t) => FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: (IsStream t, MonadAsync m) =>
-    WatchConfig -> FilePath -> ActionPredicate -> m (StopListening, t m Event)
+watchDirectoryWith :: (IsStream t) =>
+    WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: (IsStream t, MonadAsync m) => FilePath -> ActionPredicate -> m (StopListening, t m Event)
+watchTree :: (IsStream t) => FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: (IsStream t, MonadAsync m) => WatchConfig -> FilePath -> ActionPredicate -> m (StopListening, t m Event)
+watchTreeWith :: (IsStream t) => WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchTreeWith = watch watchTreeChan
 
-watch :: (IsStream t, MonadAsync m) =>
+watch :: (IsStream t) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
-    WatchConfig -> FilePath -> ActionPredicate -> m (StopListening, t m Event)
+    WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watch f conf p predicate = do
-    manager <- liftIO $ startManagerConf conf
-    chan <- liftIO newChan
-    stop <- liftIO $ f manager p predicate chan
-    pure (stop >> stopManager manager, SP.repeatM $ liftIO $ readChan chan)
+    manager <- startManagerConf conf
+    chan <- newChan
+    stop <- f manager p predicate chan
+    pure (stop >> stopManager manager, SP.repeatM $ readChan chan)
