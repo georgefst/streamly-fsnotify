@@ -53,7 +53,6 @@ module Streamly.FSNotify (
 import Control.Arrow ((>>>))
 import Control.Concurrent.Chan (newChan, readChan)
 import Control.Monad.IO.Class (MonadIO(..))
-import Data.Bool (bool)
 import Data.Semiring (Semiring(..))
 import Data.Text (Text, pack)
 import Data.Time.Clock (UTCTime)
@@ -231,7 +230,10 @@ mungeEvent = \case
     FSN.Added p t b -> Added p t (isDir b)
     FSN.Modified p t b -> Modified p t (isDir b)
     FSN.Removed p t b -> Modified p t (isDir b)
-    FSN.Unknown p t s -> Other p t (pack s)
+    FSN.Unknown p t b s -> Other p t (pack s)
+    e -> Other (FSN.eventPath e) (FSN.eventTime e) (pack $ show e)
 
-isDir :: Bool -> FSEntryType
-isDir = bool NotDir Dir
+isDir :: FSN.EventIsDirectory -> FSEntryType
+isDir = \case
+    FSN.IsFile -> NotDir
+    FSN.IsDirectory -> Dir
