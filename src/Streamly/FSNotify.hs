@@ -67,7 +67,7 @@ import qualified Streamly.Prelude as SP
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
 watchDirectory :: (IsStream t, MonadAsync m) => FilePath -> ActionPredicate -> m (StopListening, t m Event)
-watchDirectory = watch watchDirChan defaultConfig
+watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
 watchDirectoryWith :: (IsStream t, MonadAsync m) =>
@@ -76,7 +76,7 @@ watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
 watchTree :: (IsStream t, MonadAsync m) => FilePath -> ActionPredicate -> m (StopListening, t m Event)
-watchTree = watch watchTreeChan defaultConfig
+watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
 watchTreeWith :: (IsStream t, MonadAsync m) => WatchConfig -> FilePath -> ActionPredicate -> m (StopListening, t m Event)
@@ -89,5 +89,4 @@ watch f conf p predicate = do
     manager <- liftIO $ startManagerConf conf
     chan <- liftIO newChan
     stop <- liftIO $ f manager p predicate chan
-    let reallyStop = stop >> stopManager manager
-    pure (reallyStop, SP.repeatM $ liftIO $ readChan chan)
+    pure (stop >> stopManager manager, SP.repeatM $ liftIO $ readChan chan)
