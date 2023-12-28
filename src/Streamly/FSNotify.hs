@@ -49,6 +49,8 @@ module Streamly.FSNotify (
 import Control.Concurrent.Chan (newChan, readChan)
 import Streamly.Data.Stream.Prelude (Stream)
 import Streamly.Data.Stream.Prelude qualified as S
+import Streamly.Data.StreamK qualified as SK
+import Streamly.Internal.Data.StreamK qualified as SK
 import System.FSNotify (
     ActionPredicate,
     Event (..),
@@ -64,19 +66,19 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: FilePath -> ActionPredicate -> IO (Stream IO Event)
+watchDirectory :: FilePath -> ActionPredicate -> Stream IO Event
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (Stream IO Event)
+watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> Stream IO Event
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: FilePath -> ActionPredicate -> IO (Stream IO Event)
+watchTree :: FilePath -> ActionPredicate -> Stream IO Event
 watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (Stream IO Event)
+watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> Stream IO Event
 watchTreeWith = watch watchTreeChan
 
 watch ::
@@ -84,9 +86,20 @@ watch ::
     WatchConfig ->
     FilePath ->
     ActionPredicate ->
-    IO (Stream IO Event)
-watch f conf p predicate = do
-    manager <- startManagerConf conf
-    chan <- newChan
-    stop <- f manager p predicate chan
-    pure (S.finally (stop >> stopManager manager) $ S.repeatM $ readChan chan)
+    Stream IO Event
+watch f conf p predicate = withInit
+    do
+        manager <- startManagerConf conf
+        chan <- newChan
+        stop <- f manager p predicate chan
+        pure (chan, stop >> stopManager manager)
+    \(chan, stop) -> S.finally stop $ S.repeatM $ readChan chan
+  where
+    -- TODO a few problems with this:
+    -- it's vendored from `georgefst-utils`
+    -- it's inelegant and inefficient (though inhibiting fusion isn't a major issue since we already have `finally`)
+    -- it incurs a direct dependency on `streamly-core`
+    withInit init_ stream =
+        SK.toStream . SK.unCross $
+            SK.mkCross . SK.fromStream . stream
+                =<< SK.mkCross (SK.fromStream $ S.fromEffect init_)
