@@ -57,7 +57,7 @@ import Data.Bool (bool)
 import Data.Semiring (Semiring(..))
 import Data.Text (Text, pack)
 import Data.Time.Clock (UTCTime)
-import Streamly (IsStream, MonadAsync)
+import Streamly.Prelude (IsStream, MonadAsync)
 import System.FilePath (isExtensionOf)
 
 import qualified Streamly.Prelude as SP
