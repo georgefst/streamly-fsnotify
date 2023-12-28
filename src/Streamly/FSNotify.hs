@@ -10,7 +10,7 @@ __Example__
 This example program watches @\/home\/koz\/c-project@ (and any of its subdirectories) for added or modified files with a
 @.c@ extension, and emits the change to the terminal, along with a timestamp of when it happened, forever:
 
-> {-# LANGUAGE LambdaCase #-}
+> {\-# LANGUAGE LambdaCase #-\}
 >
 > import System.FilePath ((</>))
 > import Streamly.FSNotify (EventPredicate, hasExtension, isDirectory, invert, isDeletion, conj, watchTree)
@@ -69,8 +69,7 @@ watchDirectory :: (IsStream t) => FilePath -> ActionPredicate -> IO (StopListeni
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: (IsStream t) =>
-    WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+watchDirectoryWith :: (IsStream t) => WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
@@ -81,9 +80,13 @@ watchTree = watchTreeWith defaultConfig
 watchTreeWith :: (IsStream t) => WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
 watchTreeWith = watch watchTreeChan
 
-watch :: (IsStream t) =>
+watch ::
+    (IsStream t) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
-    WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+    WatchConfig ->
+    FilePath ->
+    ActionPredicate ->
+    IO (StopListening, t IO Event)
 watch f conf p predicate = do
     manager <- startManagerConf conf
     chan <- newChan
