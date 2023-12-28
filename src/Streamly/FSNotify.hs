@@ -47,7 +47,8 @@ module Streamly.FSNotify (
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
-import Streamly.Prelude (IsStream)
+import Streamly.Data.Stream.Prelude (Stream)
+import qualified Streamly.Data.Stream.Prelude as S
 import System.FSNotify (
     ActionPredicate,
     Event (..),
@@ -62,33 +63,30 @@ import System.FSNotify (
     watchTreeChan,
  )
 
-import qualified Streamly.Prelude as SP
-
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: (IsStream t) => FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+watchDirectory :: FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: (IsStream t) => WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: (IsStream t) => FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+watchTree :: FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
 watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: (IsStream t) => WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, t IO Event)
+watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
 watchTreeWith = watch watchTreeChan
 
 watch ::
-    (IsStream t) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
     WatchConfig ->
     FilePath ->
     ActionPredicate ->
-    IO (StopListening, t IO Event)
+    IO (StopListening, Stream IO Event)
 watch f conf p predicate = do
     manager <- startManagerConf conf
     chan <- newChan
     stop <- f manager p predicate chan
-    pure (stop >> stopManager manager, SP.repeatM $ readChan chan)
+    pure (stop >> stopManager manager, S.repeatM $ readChan chan)
