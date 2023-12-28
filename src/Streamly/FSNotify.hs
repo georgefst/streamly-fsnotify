@@ -48,7 +48,7 @@ module Streamly.FSNotify (
 
 import Control.Concurrent.Chan (newChan, readChan)
 import Streamly.Data.Stream.Prelude (Stream)
-import qualified Streamly.Data.Stream.Prelude as S
+import Streamly.Data.Stream.Prelude qualified as S
 import System.FSNotify (
     ActionPredicate,
     Event (..),
