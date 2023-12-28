@@ -40,12 +40,10 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 >         _ -> pure ()
 -}
 module Streamly.FSNotify (
-    -- * Basic types
-    Event(..), StopListening,
-    -- * Events and predicates
-    ActionPredicate,
-    -- * Watchers
-    watchDirectory, watchDirectoryWith, watchTree, watchTreeWith,
+    watchDirectory,
+    watchDirectoryWith,
+    watchTree,
+    watchTreeWith,
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
