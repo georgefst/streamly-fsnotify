@@ -64,19 +64,19 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
+watchDirectory :: FilePath -> ActionPredicate -> IO (Stream IO Event)
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
+watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (Stream IO Event)
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
+watchTree :: FilePath -> ActionPredicate -> IO (Stream IO Event)
 watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (StopListening, Stream IO Event)
+watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> IO (Stream IO Event)
 watchTreeWith = watch watchTreeChan
 
 watch ::
@@ -84,9 +84,9 @@ watch ::
     WatchConfig ->
     FilePath ->
     ActionPredicate ->
-    IO (StopListening, Stream IO Event)
+    IO (Stream IO Event)
 watch f conf p predicate = do
     manager <- startManagerConf conf
     chan <- newChan
     stop <- f manager p predicate chan
-    pure (stop >> stopManager manager, S.repeatM $ readChan chan)
+    pure (S.finally (stop >> stopManager manager) $ S.repeatM $ readChan chan)
