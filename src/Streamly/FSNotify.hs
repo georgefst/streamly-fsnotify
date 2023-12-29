@@ -40,7 +40,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 >         _ -> pure ()
 -}
 module Streamly.FSNotify (
-    watchDirectory,
+    watchDir,
     watchTree,
 ) where
 
@@ -64,8 +64,8 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: FilePath -> Predicate Event -> Stream IO Event
-watchDirectory = watch watchDirChan
+watchDir :: FilePath -> Predicate Event -> Stream IO Event
+watchDir = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
 watchTree :: FilePath -> Predicate Event -> Stream IO Event
