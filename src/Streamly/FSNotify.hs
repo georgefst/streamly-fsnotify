@@ -2,37 +2,36 @@
 __Introduction__
 
 This provides file watching as a Streamly stream. You can either watch recursively (namely, a directory's contents and
-all its subdirectories as well), or not. You can also filter out file system events you are not interested in. Lastly,
-we provide a compositional scheme for constructing filters for file system events.
+all its subdirectories as well), or not. You can also filter out file system events you are not interested in.
 
 __Example__
 
-This example program watches @\/home\/koz\/c-project@ (and any of its subdirectories) for added or modified files with a
-@.c@ extension, and emits the change to the terminal, along with a timestamp of when it happened, forever:
+This example program watches @\/home\/georgefst\/c-project@ (and any of its subdirectories) for added or modified files
+with a @.c@ extension, and emits the change to the terminal, along with a timestamp of when it happened, forever:
 
-> {\-# LANGUAGE LambdaCase #-\}
+> {\-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-\}
 >
-> import System.FilePath ((</>))
-> import Streamly.FSNotify (EventPredicate, hasExtension, isDirectory, invert, isDeletion, conj, watchTree)
-> import qualified Streamly.Prelude as SP
+> import Data.Functor.Contravariant (Predicate (Predicate))
+> import Streamly.Data.Fold qualified as SF
+> import Streamly.Data.Stream.Prelude qualified as SP
+> import System.FilePath (isExtensionOf, (</>))
 >
-> -- conj -> both must be true
-> -- invert -> true when the argument would be false and vice versa
-> isCSourceFile :: EventPredicate
-> isCSourceFile = hasExtension "c" `conj` invert isDirectory
+> import Streamly.FSNotify
 >
-> notDeletion :: EventPredicate
-> notDeletion = invert isDeletion
+> isCSourceFile :: Predicate Event
+> isCSourceFile = Predicate \e ->
+>     "c" `isExtensionOf` eventPath e && eventIsDirectory e == IsFile
+>
+> notDeletion :: Predicate Event
+> notDeletion = Predicate \case
+>     Removed{} -> False
+>     _ -> True
 >
 > srcPath :: FilePath
-> srcPath = "home" </> "koz" </> "c-project"
+> srcPath = "/" </> "home" </> "gthomas" </> "c-project"
 >
-> -- first value given by watchTree stops the watcher
-> -- we don't use it here, but if you want to, just call it
 > main :: IO ()
-> main = do
->     (_, stream) <- watchTree srcPath $ isCSourceFile `conj` notDeletion
->     SP.drain . SP.mapM go $ stream
+> main = SP.fold (SF.drainMapM go) $ watchTree srcPath $ isCSourceFile <> notDeletion
 >   where
 >     go = \case
 >         Added p t _ -> putStrLn $ "Created: " ++ show p ++ " at " ++ show t

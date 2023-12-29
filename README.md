@@ -4,36 +4,35 @@
 well-documented. File system watching is a natural fit for a streaming library,
 and this is exactly what ``streamly-fsnotify`` provides you.
 
-As an example, here is a program which watches ``/home/koz/c-project/`` and any
+As an example, here is a program which watches ``/home/gthomas/c-project/`` and any
 of its subdirectories for added or modified C source files (which we take to be
 anything with a ``.c`` extension). This program then writes that the event
 occurred, to what file, and when, forever.
 
 ```haskell
+{-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-}
 
-{-# LANGUAGE LambdaCase #-}
+import Data.Functor.Contravariant (Predicate (Predicate))
+import Streamly.Data.Fold qualified as SF
+import Streamly.Data.Stream.Prelude qualified as SP
+import System.FilePath (isExtensionOf, (</>))
 
-import System.FilePath ((</>))
-import Streamly.FSNotify (EventPredicate, hasExtension, isDirectory, invert, isDeletion, conj, watchTree)
-import qualified Streamly.Prelude as SP
+import Streamly.FSNotify
 
--- conj -> both must be true
--- invert -> true when the argument would be false and vice versa
-isCSourceFile :: EventPredicate
-isCSourceFile = hasExtension "c" `conj` invert isDirectory
+isCSourceFile :: Predicate Event
+isCSourceFile = Predicate \e ->
+    "c" `isExtensionOf` eventPath e && eventIsDirectory e == IsFile
 
-notDeletion :: EventPredicate
-notDeletion = invert isDeletion
+notDeletion :: Predicate Event
+notDeletion = Predicate \case
+    Removed{} -> False
+    _ -> True
 
 srcPath :: FilePath
-srcPath = "home" </> "koz" </> "c-project"
+srcPath = "/" </> "home" </> "gthomas" </> "c-project"
 
--- first value given by watchTree stops the watcher
--- we don't use it here, but if you want to, just call it
 main :: IO ()
-main = do
-    (_, stream) <- watchTree srcPath $ isCSourceFile `conj` notDeletion
-    SP.drain . SP.mapM go $ stream
+main = SP.fold (SF.drainMapM go) $ watchTree srcPath $ isCSourceFile <> notDeletion
   where
     go = \case
         Added p t _ -> putStrLn $ "Created: " ++ show p ++ " at " ++ show t
@@ -46,9 +45,6 @@ main = do
 * Cross-platform - should work anywhere both ``streamly`` and ``fsnotify`` do.
 * Efficient (event-driven, so won't shred your CPU or load your RAM).
 * Able to do one-level and recursive watching.
-* Compositional and principled treatment of event filtering predicates.
-* Extensive set of filtering predicates, so you don't have to see events you
-  don't care about!
 
 ## Sounds good? Can I use it?
 
