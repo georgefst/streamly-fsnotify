@@ -17,10 +17,10 @@ to what file, and when, forever.
 > isCSourceFile e =
 >     "c" `isExtensionOf` eventPath e && eventIsDirectory e == IsFile
 >
-> notDeletion :: Event -> Bool
-> notDeletion = \case
->     Removed{} -> False
->     _ -> True
+> isDeletion :: Event -> Bool
+> isDeletion = \case
+>     Removed{} -> True
+>     _ -> False
 >
 > srcPath :: FilePath
 > srcPath = "/" </> "home" </> "gthomas" </> "c-project"
@@ -29,7 +29,7 @@ to what file, and when, forever.
 > main = SP.fold (SF.drainMapM go) $ watchTree srcPath
 >   where
 >     go = \case
->         e | not (isCSourceFile e && notDeletion e) -> pure ()
+>         e | not (isCSourceFile e) || isDeletion e -> pure ()
 >         Added p t _ -> putStrLn $ "Created: " ++ show p ++ " at " ++ show t
 >         Modified p t _ -> putStrLn $ "Modified: " ++ show p ++ " at " ++ show t
 >         _ -> pure ()
