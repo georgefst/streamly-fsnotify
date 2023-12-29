@@ -40,6 +40,8 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 >         _ -> pure ()
 -}
 module Streamly.FSNotify (
+    Event (..),
+    EventIsDirectory (..),
     watchDir,
     watchTree,
 ) where
@@ -54,6 +56,7 @@ import System.FSNotify (
     ActionPredicate,
     Event (..),
     EventChannel,
+    EventIsDirectory (..),
     StopListening,
     WatchManager,
     defaultConfig,
