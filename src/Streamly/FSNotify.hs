@@ -55,7 +55,6 @@ import System.FSNotify (
     Event (..),
     EventChannel,
     StopListening,
-    WatchConfig,
     WatchManager,
     defaultConfig,
     startManagerConf,
@@ -66,21 +65,20 @@ import System.FSNotify (
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
 watchDirectory :: FilePath -> Predicate Event -> Stream IO Event
-watchDirectory = watch watchDirChan defaultConfig
+watchDirectory = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
 watchTree :: FilePath -> Predicate Event -> Stream IO Event
-watchTree = watch watchTreeChan defaultConfig
+watchTree = watch watchTreeChan
 
 watch ::
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
-    WatchConfig ->
     FilePath ->
     Predicate Event ->
     Stream IO Event
-watch f conf p predicate = withInit
+watch f p predicate = withInit
     do
-        manager <- startManagerConf conf
+        manager <- startManagerConf defaultConfig
         chan <- newChan
         stop <- f manager p (getPredicate predicate) chan
         pure (chan, stop >> stopManager manager)
