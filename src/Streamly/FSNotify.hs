@@ -41,9 +41,7 @@ This example program watches @\/home\/koz\/c-project@ (and any of its subdirecto
 -}
 module Streamly.FSNotify (
     watchDirectory,
-    watchDirectoryWith,
     watchTree,
-    watchTreeWith,
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
@@ -68,19 +66,11 @@ import System.FSNotify (
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
 watchDirectory :: FilePath -> Predicate Event -> Stream IO Event
-watchDirectory = watchDirectoryWith defaultConfig
-
--- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: WatchConfig -> FilePath -> Predicate Event -> Stream IO Event
-watchDirectoryWith = watch watchDirChan
+watchDirectory = watch watchDirChan defaultConfig
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
 watchTree :: FilePath -> Predicate Event -> Stream IO Event
-watchTree = watchTreeWith defaultConfig
-
--- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: WatchConfig -> FilePath -> Predicate Event -> Stream IO Event
-watchTreeWith = watch watchTreeChan
+watchTree = watch watchTreeChan defaultConfig
 
 watch ::
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
