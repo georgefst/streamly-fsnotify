@@ -47,6 +47,7 @@ module Streamly.FSNotify (
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
+import Data.Functor.Contravariant (Predicate (getPredicate))
 import Streamly.Data.Stream.Prelude (Stream)
 import Streamly.Data.Stream.Prelude qualified as S
 import Streamly.Data.StreamK qualified as SK
@@ -66,32 +67,32 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDirectory :: FilePath -> ActionPredicate -> Stream IO Event
+watchDirectory :: FilePath -> Predicate Event -> Stream IO Event
 watchDirectory = watchDirectoryWith defaultConfig
 
 -- | As 'watchDirectory', but with a specified set of watch options.
-watchDirectoryWith :: WatchConfig -> FilePath -> ActionPredicate -> Stream IO Event
+watchDirectoryWith :: WatchConfig -> FilePath -> Predicate Event -> Stream IO Event
 watchDirectoryWith = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: FilePath -> ActionPredicate -> Stream IO Event
+watchTree :: FilePath -> Predicate Event -> Stream IO Event
 watchTree = watchTreeWith defaultConfig
 
 -- | As 'watchTree', but with a specified set of watch options.
-watchTreeWith :: WatchConfig -> FilePath -> ActionPredicate -> Stream IO Event
+watchTreeWith :: WatchConfig -> FilePath -> Predicate Event -> Stream IO Event
 watchTreeWith = watch watchTreeChan
 
 watch ::
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
     WatchConfig ->
     FilePath ->
-    ActionPredicate ->
+    Predicate Event ->
     Stream IO Event
 watch f conf p predicate = withInit
     do
         manager <- startManagerConf conf
         chan <- newChan
-        stop <- f manager p predicate chan
+        stop <- f manager p (getPredicate predicate) chan
         pure (chan, stop >> stopManager manager)
     \(chan, stop) -> S.finally stop $ S.repeatM $ readChan chan
   where
