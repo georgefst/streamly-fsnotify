@@ -7,19 +7,18 @@ to what file, and when, forever.
 
 > {-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-}
 >
-> import Data.Functor.Contravariant (Predicate (Predicate))
 > import Streamly.Data.Fold qualified as SF
 > import Streamly.Data.Stream.Prelude qualified as SP
 > import System.FilePath (isExtensionOf, (</>))
 >
 > import Streamly.FSNotify
 >
-> isCSourceFile :: Predicate Event
-> isCSourceFile = Predicate \e ->
+> isCSourceFile :: Event -> Bool
+> isCSourceFile e =
 >     "c" `isExtensionOf` eventPath e && eventIsDirectory e == IsFile
 >
-> notDeletion :: Predicate Event
-> notDeletion = Predicate \case
+> notDeletion :: Event -> Bool
+> notDeletion = \case
 >     Removed{} -> False
 >     _ -> True
 >
@@ -27,9 +26,10 @@ to what file, and when, forever.
 > srcPath = "/" </> "home" </> "gthomas" </> "c-project"
 >
 > main :: IO ()
-> main = SP.fold (SF.drainMapM go) $ watchTree srcPath $ isCSourceFile <> notDeletion
+> main = SP.fold (SF.drainMapM go) $ watchTree srcPath
 >   where
 >     go = \case
+>         e | not (isCSourceFile e && notDeletion e) -> pure ()
 >         Added p t _ -> putStrLn $ "Created: " ++ show p ++ " at " ++ show t
 >         Modified p t _ -> putStrLn $ "Modified: " ++ show p ++ " at " ++ show t
 >         _ -> pure ()
@@ -44,7 +44,6 @@ module Streamly.FSNotify (
 import Control.Concurrent.Chan (newChan, readChan)
 import Control.Monad.Catch (MonadCatch)
 import Control.Monad.IO.Class (liftIO)
-import Data.Functor.Contravariant (Predicate (getPredicate))
 import Streamly.Data.Stream.Prelude (MonadAsync, Stream)
 import Streamly.Data.Stream.Prelude qualified as S
 import Streamly.Data.StreamK qualified as SK
@@ -64,24 +63,23 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDir :: (MonadAsync m, MonadCatch m) => FilePath -> Predicate Event -> Stream m Event
+watchDir :: (MonadAsync m, MonadCatch m) => FilePath -> Stream m Event
 watchDir = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: (MonadAsync m, MonadCatch m) => FilePath -> Predicate Event -> Stream m Event
+watchTree :: (MonadAsync m, MonadCatch m) => FilePath -> Stream m Event
 watchTree = watch watchTreeChan
 
 watch ::
     (MonadAsync m, MonadCatch m) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
     FilePath ->
-    Predicate Event ->
     Stream m Event
-watch f p predicate = withInit
+watch f p = withInit
     do
         manager <- liftIO $ startManagerConf defaultConfig
         chan <- liftIO newChan
-        stop <- liftIO $ f manager p (getPredicate predicate) chan
+        stop <- liftIO $ f manager p (const True) chan
         pure (chan, liftIO $ stop >> liftIO (stopManager manager))
     \(chan, stop) -> S.finally stop $ S.repeatM $ liftIO $ readChan chan
   where
