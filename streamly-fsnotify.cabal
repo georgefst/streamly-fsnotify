@@ -20,6 +20,7 @@ library
         Streamly.FSNotify
     build-depends:
         base >= 4.9 && < 5,
+        exceptions ^>= 0.10,
         filepath ^>= 1.4.2.1,
         fsnotify ^>= 0.4,
         semirings ^>= {0.5.2, 0.6},

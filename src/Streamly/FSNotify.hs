@@ -42,8 +42,10 @@ module Streamly.FSNotify (
 ) where
 
 import Control.Concurrent.Chan (newChan, readChan)
+import Control.Monad.Catch (MonadCatch)
+import Control.Monad.IO.Class (liftIO)
 import Data.Functor.Contravariant (Predicate (getPredicate))
-import Streamly.Data.Stream.Prelude (Stream)
+import Streamly.Data.Stream.Prelude (MonadAsync, Stream)
 import Streamly.Data.Stream.Prelude qualified as S
 import Streamly.Data.StreamK qualified as SK
 import Streamly.Internal.Data.StreamK qualified as SK
@@ -62,25 +64,26 @@ import System.FSNotify (
  )
 
 -- | Watch a given directory, but only at one level (thus, subdirectories will __not__ be watched recursively).
-watchDir :: FilePath -> Predicate Event -> Stream IO Event
+watchDir :: (MonadAsync m, MonadCatch m) => FilePath -> Predicate Event -> Stream m Event
 watchDir = watch watchDirChan
 
 -- | Watch a given directory recursively (thus, subdirectories will also have their contents watched).
-watchTree :: FilePath -> Predicate Event -> Stream IO Event
+watchTree :: (MonadAsync m, MonadCatch m) => FilePath -> Predicate Event -> Stream m Event
 watchTree = watch watchTreeChan
 
 watch ::
+    (MonadAsync m, MonadCatch m) =>
     (WatchManager -> FilePath -> ActionPredicate -> EventChannel -> IO StopListening) ->
     FilePath ->
     Predicate Event ->
-    Stream IO Event
+    Stream m Event
 watch f p predicate = withInit
     do
-        manager <- startManagerConf defaultConfig
-        chan <- newChan
-        stop <- f manager p (getPredicate predicate) chan
-        pure (chan, stop >> stopManager manager)
-    \(chan, stop) -> S.finally stop $ S.repeatM $ readChan chan
+        manager <- liftIO $ startManagerConf defaultConfig
+        chan <- liftIO newChan
+        stop <- liftIO $ f manager p (getPredicate predicate) chan
+        pure (chan, liftIO $ stop >> liftIO (stopManager manager))
+    \(chan, stop) -> S.finally stop $ S.repeatM $ liftIO $ readChan chan
   where
     -- TODO a few problems with this:
     -- it's vendored from `georgefst-utils`
