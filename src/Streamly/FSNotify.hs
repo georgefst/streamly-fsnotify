@@ -1,13 +1,9 @@
 {- |
-__Introduction__
-
-This provides file watching as a Streamly stream. You can either watch recursively (namely, a directory's contents and
-all its subdirectories as well), or not. You can also filter out file system events you are not interested in.
-
 __Example__
 
-This example program watches @\/home\/georgefst\/c-project@ (and any of its subdirectories) for added or modified files
-with a @.c@ extension, and emits the change to the terminal, along with a timestamp of when it happened, forever:
+Here is a program which watches @\/home\/georgefst\/c-project@ and any of its subdirectories for added or modified
+C source files (which we take to be anything with a @.c@ extension). This program then writes that the event occurred,
+to what file, and when, forever.
 
 > {\-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-\}
 >
