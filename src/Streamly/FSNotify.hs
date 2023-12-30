@@ -5,7 +5,7 @@ Here is a program which watches @\/home\/georgefst\/c-project@ and any of its su
 C source files (which we take to be anything with a @.c@ extension). This program then writes that the event occurred,
 to what file, and when, forever.
 
-> {-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-}
+> {\-# LANGUAGE GHC2021, BlockArguments, LambdaCase #-\}
 >
 > import Streamly.Data.Fold qualified as SF
 > import Streamly.Data.Stream.Prelude qualified as SP

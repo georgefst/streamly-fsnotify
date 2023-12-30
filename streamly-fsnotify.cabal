@@ -1,6 +1,6 @@
 cabal-version:       3.0
 name:                streamly-fsnotify
-version:             2.1
+version:             2.1.0.1
 synopsis:            Folder watching as a Streamly stream.
 description:
     Provides Streamly streams for both single-level and recursive folder watching.
