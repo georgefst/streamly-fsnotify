@@ -1,5 +1,9 @@
 # Revision history for streamly-fsnotify
 
+## 2.1 -- 2023-12-29
+
+- Remove file predicates as they're actually pointless. They do perhaps make sense in the context of `fsnotify` itself due to its approach to concurrency and action handling. But for this library, ignoring events via a predicate isn't really any different to just choosing not to do anything when it comes to matching on the received events. I had implicitly assumed when taking over this library that the predicates were smarter than that, telling upstream systems like `inotify` to totally ignore certain events. But that wouldn't have been possible with the old API, and would need support from `fsnotify` anyway, which may not be possible due to platform inconsistencies.
+
 ## 2.0 -- 2023-12-29
 
 With Streamly also making major breaking changes, this seemed like the time for a radical overhaul (we needed to move to the new stream type _at some point_, and that would break everything anyway). Essentially, having taken over this package nearly four years ago, and used it extensively, I've decided that it was unnecessarily complex. The line count is now _much_ shorter, but the interesting stuff is still here. In particular:
