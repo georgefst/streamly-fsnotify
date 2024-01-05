@@ -18,7 +18,7 @@ to what file, and when, forever.
 >     "c" `isExtensionOf` eventPath e && eventIsDirectory e == IsFile
 >
 > srcPath :: FilePath
-> srcPath = "/" </> "home" </> "gthomas" </> "c-project"
+> srcPath = "/" </> "home" </> "georgefst" </> "c-project"
 >
 > main :: IO ()
 > main = SP.fold (SF.drainMapM go) $ watchTree srcPath
