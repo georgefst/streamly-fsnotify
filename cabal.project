@@ -1,0 +1,9 @@
+packages: .
+
+if impl(ghc >= 9.10)
+    source-repository-package
+        type: git
+        location: https://github.com/composewell/streamly
+        tag: 9539dcca361bb05eaa04cfe5be99ce38d8a1f98f
+        subdir: . core
+    allow-newer: *:streamly, *:streamly-core
