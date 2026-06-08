@@ -4,7 +4,6 @@ version:             2.1.0.2
 synopsis:            Folder watching as a Streamly stream.
 description:
     Provides Streamly streams for both single-level and recursive folder watching.
-    Also contains a principled and compositional system for filtering file system events.
 homepage:            https://github.com/georgefst/streamly-fsnotify
 license:             BSD-3-Clause
 license-file:        LICENSE
