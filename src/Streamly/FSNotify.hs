@@ -12,6 +12,7 @@ to what file, and when, forever.
 > import System.FilePath (isExtensionOf, (</>))
 >
 > import Streamly.FSNotify
+> import System.FSNotify
 >
 > isCSourceFile :: Event -> Bool
 > isCSourceFile e =
@@ -21,7 +22,7 @@ to what file, and when, forever.
 > srcPath = "/" </> "home" </> "georgefst" </> "c-project"
 >
 > main :: IO ()
-> main = SP.fold (SF.drainMapM go) $ watchTree srcPath
+> main = SP.fold (SF.drainMapM go) $ Streamly.FSNotify.watchTree srcPath
 >   where
 >     go = \case
 >         e | not (isCSourceFile e) -> pure ()
@@ -30,8 +31,6 @@ to what file, and when, forever.
 >         _ -> pure ()
 -}
 module Streamly.FSNotify (
-    Event (..),
-    EventIsDirectory (..),
     watchDir,
     watchTree,
 ) where
@@ -47,7 +46,6 @@ import System.FSNotify (
     ActionPredicate,
     Event (..),
     EventChannel,
-    EventIsDirectory (..),
     StopListening,
     WatchManager,
     defaultConfig,
